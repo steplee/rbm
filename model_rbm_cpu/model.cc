@@ -171,6 +171,9 @@ void Model::do_contrastive_divergence(int n, float* w_grad,
 
   // 1. Sample p(h|v)
   float *h_first = new float[hid_size];
+  // NOTE: Apparently collapsing prob to a *binary value* is very important here
+  // It puts a bottleneck on the learning process (think of an AE) that helps learning.
+  // See Hinton doc section 3.4
   sample_h(h_first, v_data, true);
 
   // 2. Sample v' and h'
