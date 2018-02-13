@@ -4,7 +4,7 @@
 using namespace std;
 
 void Display::init() {
-  window = new sf::RenderWindow(sf::VideoMode(280,280), "SFML works!");
+  window = new sf::RenderWindow(sf::VideoMode(280,280), "Mnist RBM");
   sf::CircleShape shape(100.f);
   shape.setFillColor(sf::Color::Green);
 

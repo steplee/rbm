@@ -7,7 +7,7 @@ using namespace std;
 
 #include <boost/thread.hpp>
 
-#define LOG_LVL 0
+#define LOG_LVL 10
 
 
 /*
@@ -34,16 +34,14 @@ void Model::erase() {
 
 void Model::init() {
   // From 8.1 of Hinton's doc
-  a = new float[vis_size];
-  b = new float[hid_size];
-
-  for (int i=0; i<hid_size; i++)
-    b[i] = 0.0f;
+  a = new float[vis_size]();
+  b = new float[hid_size]();
 
   std::normal_distribution<float> dist(0.0f, .01f);
 
   for (int i=0; i<vis_size; i++)
-    a[i] = log(.4f/.6f); // Hinton recommends building data stats, this is an approx.
+    //a[i] = log(.4f/.6f); // Hinton recommends building data stats, this is an approx.
+    a[i] = .000001f; 
 
 
   w = new float[vis_size*hid_size];
@@ -102,30 +100,33 @@ void Model::train_batch(std::vector<std::vector<float>> imgs) {
   // there is no point in mini-batching until I add parallelism obviously
   // but I might as well code it up with batching for easy conversion
 
-  float *w_grad = new float[vis_size*hid_size];
-  float *a_grad = new float[vis_size];
-  float *b_grad = new float[hid_size];
-
-  for (int i=0; i<vis_size*hid_size; i++)
-    w_grad[i] = 0.0f;
+  // Cool cpp trick I just learned adding `()` here will behave like calloc for scalar types
+  float *w_grad = new float[vis_size*hid_size]();
+  float *a_grad = new float[vis_size]();
+  float *b_grad = new float[hid_size]();
 
   for (int im=1; im<imgs.size(); im++) {
     do_contrastive_divergence(CD_STEPS, w_grad, a_grad, b_grad, imgs[im].data());
   }
 
-  float norm = 0;
+  float norm_w = 0, norm_a = 0, norm_b = 0;
   for (int i=0; i<vis_size*hid_size; i++)
     w[i] += w_grad[i],
-    norm += w_grad[i]*w_grad[i];
+    norm_w += w_grad[i]*w_grad[i];
   for (int i=0; i<vis_size; i++)
-    a[i] += a_grad[i];
+    a[i] += a_grad[i],
+    norm_a += a_grad[i]*a_grad[i];
   for (int i=0; i<hid_size; i++)
-    b[i] += b_grad[i];
+    b[i] += b_grad[i],
+    norm_b += b_grad[i]*b_grad[i];
 
+  norm_w = sqrt(norm_w); norm_a = sqrt(norm_a); norm_b = sqrt(norm_b);
   if (LOG_LVL >= 1)
-    cout << "updating w with grad norm " << sqrt(norm) << endl;
+    printf("Updating with norms: w:%f\ta:%f\tb:%f\n", norm_w,norm_a,norm_b);
 
   delete[] w_grad;
+  delete[] a_grad;
+  delete[] b_grad;
 
 }
 
@@ -162,6 +163,7 @@ void Model::do_contrastive_divergence(int n, float* w_grad,
                                              float* a_grad,
                                              float* b_grad, float* v_data) {
   float lr = .01;
+  float lr_bias = .001;
 
   // sampling process
   // v_data -> h_first -> [v_i -> h_i] ...
@@ -171,12 +173,12 @@ void Model::do_contrastive_divergence(int n, float* w_grad,
   float *h_first = new float[hid_size];
   sample_h(h_first, v_data, true);
 
-  // More Gibbs sampling steps -> better updates
+  // 2. Sample v' and h'
   float *v_i = new float[vis_size];
   float *h_i = new float[hid_size];
   memcpy(h_i, h_first, sizeof(float)*hid_size); // h_0 = h_first
+  // More Gibbs sampling steps -> better updates
   for (int step=0; step<n; step++) {
-    // 2. Sample v' and h'
     sample_v(v_i, h_i);
     sample_h(h_i, v_i);
   }
@@ -192,9 +194,12 @@ void Model::do_contrastive_divergence(int n, float* w_grad,
   // 5. Step gradient
   for (int i=0; i<vis_size*hid_size; i++)
     w_grad[i] += (vh_t[i] - vphp_t[i]) * lr;
-
-  memset(a_grad, 0, sizeof(float)*vis_size);
-  memset(b_grad, 0, sizeof(float)*hid_size);
+  for (int i=0; i<vis_size; i++) {
+    //cout << ((v_data[i] - v_i[i]) * lr_bias) << endl;
+    a_grad[i] += (v_data[i] - v_i[i]) * lr_bias;
+  }
+  for (int i=0; i<hid_size; i++)
+    b_grad[i] += (h_first[i] - h_i[i]) * lr_bias;
 
   delete[] h_first;
   delete[] v_i;

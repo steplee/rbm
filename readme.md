@@ -1,17 +1,26 @@
-# Restricted Boltzmann Machine
+# Restricted Boltzmann Machine on MNIST
 
 An RBM in C++. Trained with contrastive divergence.
 Just got a new GPU, an NV, so I'll probably implement it in cuda.
 
-A primitive display using SFML (a c++ library)
+Also has a primitive display using SFML (a c++ library).
 
 ### Installation / Usage
 ```
+# You'll need the MNIST dataset, the code assumes it is in /data/mnist/raw
+
+# Some dependency native libs 
 sudo apt-get install libsfml-dev libsfml-system libsfml-graphics
 sudo apt-get install libboost libboost-system libboost-thread
+
+# Build
 cd model...
-make && ./app
+make 
+# Run
+./app
+
 ```
+
 
 ### TODO
   - As an exercise, implement CPU parallelized and cuda parallelized models

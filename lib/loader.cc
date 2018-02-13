@@ -1,9 +1,8 @@
 #include "loader.h"
+#include "my_math.h"
 
 typedef uint8_t uchar;
 
-inline float max(float a,float b) { return a>b?a:b; }
-inline float min(float a,float b) { return a<b?a:b; }
 
 MnistLoader::MnistLoader(std::string im_file, std::string label_file)
  : img_stream(im_file.c_str(), std::fstream::in | std::ifstream::binary)
